@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import heroCar from "../assets/hrv-hero-drawing.webp";
 
+const CAR_MODEL = "HR-V";
+
 const HOTSPOTS = [
   { id: "light", label: "ไฟหน้า", top: "45.2%", left: "93.9%", category: "ไฟหน้า/ไฟท้าย" },
   { id: "engine", label: "เครื่องยนต์", top: "49.0%", left: "80.8%", category: "อะไหล่เครื่องยนต์" },
@@ -20,7 +22,7 @@ export default function CarHotspots() {
       <div className="text-center mb-2">
         <h2 className="disp text-lg font-semibold">ค้นหาอะไหล่จากตำแหน่งบนตัวรถ</h2>
         <p className="text-[var(--color-muted)] text-xs mt-1">
-          คลิกจุดบนรถ HR-V เพื่อไปดูสินค้าหมวดนั้นทันที
+          คลิกจุดบนรถ HR-V เพื่อกรองเฉพาะอะไหล่ที่ใช้กับ HR-V ได้ในหมวดนั้นทันที
         </p>
       </div>
       <div className="relative max-w-[640px] mx-auto">
@@ -30,11 +32,11 @@ export default function CarHotspots() {
             key={h.id}
             onMouseEnter={() => setHovered(h.id)}
             onMouseLeave={() => setHovered(null)}
-            onClick={() =>
-              h.category
-                ? navigate(`/products?category=${encodeURIComponent(h.category)}`)
-                : navigate("/products")
-            }
+            onClick={() => {
+              const params = new URLSearchParams({ model: CAR_MODEL });
+              if (h.category) params.set("category", h.category);
+              navigate(`/products?${params.toString()}`);
+            }}
             className="absolute -translate-x-1/2 -translate-y-1/2"
             style={{ top: h.top, left: h.left }}
             aria-label={h.label}

@@ -58,6 +58,9 @@ export default function ProductCard({ product }: { product: Product }) {
         <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: s.color }} />
         <span style={{ color: s.color }}>{s.label}</span>
       </div>
+      <div className="text-[11px] text-[var(--color-muted)] mb-2 truncate" title={product.compatibleModels.join(", ")}>
+        ใช้ได้กับ: {product.compatibleModels.join(", ")}
+      </div>
       <div className="flex items-baseline gap-1.5 mb-2.5">
         <span className="text-[var(--color-red)] font-bold text-[15px]">
           ฿{product.price.toLocaleString()}

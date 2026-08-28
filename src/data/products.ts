@@ -99,6 +99,18 @@ export const PRODUCTS: Product[] = [
     description: "โคมไฟหน้า LED ความสว่างสูง แสงขาวธรรมชาติ ติดตั้งง่าย",
   },
   {
+    sku: "LT-3390",
+    name: "ไฟท้าย LED ตรงรุ่น (ข้างขวา)",
+    category: "ไฟหน้า/ไฟท้าย",
+    brand: "TYC",
+    compatibleModels: ["HR-V"],
+    price: 1890,
+    stock: "in",
+    rating: 4.3,
+    reviews: 37,
+    description: "ไฟท้าย LED ตรงรุ่น HR-V ทรงเดิมติดรถ เปลี่ยนตรงไม่ต้องดัดแปลง",
+  },
+  {
     sku: "BT-5510",
     name: "แบตเตอรี่ 12V 45AH",
     category: "แบตเตอรี่",
