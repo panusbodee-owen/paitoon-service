@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import heroCar from "../assets/hrv-hero.webp";
+import heroCar from "../assets/hrv-hero-drawing.webp";
 
 const HOTSPOTS = [
-  { id: "light", label: "ไฟหน้า", top: "41%", left: "96%", category: "ไฟหน้า/ไฟท้าย" },
-  { id: "engine", label: "เครื่องยนต์", top: "24%", left: "88%", category: "อะไหล่เครื่องยนต์" },
-  { id: "brake-f", label: "เบรกหน้า", top: "70%", left: "82%", category: "อะไหล่เครื่องยนต์" },
-  { id: "body", label: "ตัวถัง/กันชน", top: "67%", left: "50%", category: "" },
-  { id: "brake-r", label: "เบรกหลัง", top: "70%", left: "17%", category: "อะไหล่เครื่องยนต์" },
-  { id: "light-r", label: "ไฟท้าย", top: "31%", left: "4%", category: "ไฟหน้า/ไฟท้าย" },
+  { id: "light", label: "ไฟหน้า", top: "45.2%", left: "93.9%", category: "ไฟหน้า/ไฟท้าย" },
+  { id: "engine", label: "เครื่องยนต์", top: "49.0%", left: "80.8%", category: "อะไหล่เครื่องยนต์" },
+  { id: "brake-f", label: "เบรกหน้า", top: "69.4%", left: "78.8%", category: "อะไหล่เครื่องยนต์" },
+  { id: "body", label: "ตัวถัง/กันชน", top: "70.7%", left: "49.5%", category: "" },
+  { id: "brake-r", label: "เบรกหลัง", top: "70.7%", left: "19.1%", category: "อะไหล่เครื่องยนต์" },
+  { id: "light-r", label: "ไฟท้าย", top: "38.8%", left: "5.0%", category: "ไฟหน้า/ไฟท้าย" },
 ];
 
 export default function CarHotspots() {
@@ -24,7 +24,7 @@ export default function CarHotspots() {
         </p>
       </div>
       <div className="relative max-w-[640px] mx-auto">
-        <img src={heroCar} alt="Honda HR-V ตัวอย่างสำหรับเลือกหมวดอะไหล่" className="w-full h-auto" />
+        <img src={heroCar} alt="ภาพลายเส้นดินสอ HR-V สำหรับเลือกหมวดอะไหล่" className="w-full h-auto rounded-lg" />
         {HOTSPOTS.map((h) => (
           <button
             key={h.id}
