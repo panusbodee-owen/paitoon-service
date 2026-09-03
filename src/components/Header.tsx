@@ -9,9 +9,14 @@ export default function Header() {
   return (
     <header className="bg-white border-b border-[var(--color-border)] sticky top-0 z-30">
       <div className="bg-[var(--color-black)] text-[#C7C9CC] text-xs">
-        <div className="max-w-[1180px] mx-auto px-5 py-1.5 flex justify-between">
+        <div className="max-w-[1180px] mx-auto px-5 py-1.5 flex justify-between items-center">
           <span>ยินดีต้อนรับสู่ร้านไพฑูรณ์ Service · ส่งฟรีเมื่อซื้อครบ 1,500 บาท</span>
-          <span>โทร 08X-XXX-XXXX</span>
+          <div className="flex items-center gap-4">
+            <Link to="/random-eats" className="text-[var(--color-yellow)] hover:underline">
+              🎲 สุ่มร้านเด็ดกรุงเทพฯ
+            </Link>
+            <span>โทร 08X-XXX-XXXX</span>
+          </div>
         </div>
       </div>
       <div className="max-w-[1180px] mx-auto px-5 py-4 flex items-center gap-5">
