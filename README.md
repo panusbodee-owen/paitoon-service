@@ -27,8 +27,6 @@ npm run preview  # ดูตัวอย่างหลัง build
 - `src/pages/Products.tsx` หน้าสินค้าทั้งหมด (ค้นหา/กรองตามหมวด)
 - `src/pages/ProductDetail.tsx` หน้ารายละเอียดสินค้า
 - `src/pages/Cart.tsx` ตะกร้าสินค้า
-- `src/pages/RandomRestaurant.tsx` หน้าสุ่มร้านเด็ดกรุงเทพฯ (path `/random-eats`) — เลือกหมวดอาหาร/เครื่องดื่ม/ของหวาน แล้วสุ่มร้านดัง พร้อมลิงก์สั่งผ่าน LINE MAN, Grab, ShopeeFood
-- `src/data/restaurants.ts` ข้อมูลร้านและหมวดหมู่สำหรับหน้าสุ่มร้าน — แก้ตรงนี้เพื่อเพิ่ม/แก้ร้าน
 - `src/context/CartContext.tsx` ระบบตะกร้า (บันทึกไว้ใน localStorage ของเบราว์เซอร์)
 - `src/components/CarHotspots.tsx` ส่วนคลิกตำแหน่งบนรถเพื่อกรองสินค้า
 - `src/assets/hrv-hero.png` รูปรถสำหรับ hero — เปลี่ยนได้โดยแทนที่ไฟล์นี้แล้วปรับตำแหน่ง % จุดคลิกใน `CarHotspots.tsx`
