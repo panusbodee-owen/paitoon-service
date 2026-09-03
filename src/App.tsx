@@ -5,7 +5,6 @@ import Home from "./pages/Home";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
-import RandomRestaurant from "./pages/RandomRestaurant";
 import { CartProvider } from "./context/CartContext";
 
 export default function App() {
@@ -18,7 +17,6 @@ export default function App() {
           <Route path="/products" element={<Products />} />
           <Route path="/product/:sku" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
-          <Route path="/random-eats" element={<RandomRestaurant />} />
         </Routes>
         <Footer />
       </HashRouter>
