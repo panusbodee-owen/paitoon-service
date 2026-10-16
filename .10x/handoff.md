@@ -1,8 +1,7 @@
 # Handoff
 
-**From:** Brainstorming (all roles) → **To:** CTO + PM
+**From:** CTO + PM → **To:** Principal Architect + Staff Engineer
 
-- User approved design (3 sections) and asked for a single, ready-to-compile `.mq5` file.
-- Spec: `.10x/specs/2026-10-16-gold-grid-ea-design.md`
-- Key constraints: MT5 hedging, XAUUSD, RR fixed 3.0 per order + basket, fixed-risk lots (no martingale), regime-switching grid, Robbins (aggressive) preset default.
-- Environment limits: no MetaEditor/MT5/wine here → cannot compile MQL5; verification via Python mirror (stdlib unittest) + user-side compile/backtest checklist.
+- Verdict BUILD (no reference EA exists). Single-file MQL5, CTrade only, Python stdlib mirror for tests.
+- User stories + success criteria: `.10x/decisions/product-manager/gold-grid-ea.md`
+- Architect: define components inside one file, failure modes, risk invariant; write ADRs (strategy architecture + single-file delivery).
