@@ -10,6 +10,7 @@ from basket_sim import CONTRACT, TICK, simulate_basket
 from rgg import (BUY, SELL, Order, RR_RATIO, RR_TOLERANCE, REGIME_BREAKOUT_DOWN,
                  REGIME_BREAKOUT_UP, REGIME_NEUTRAL, REGIME_RANGE, REGIME_VOLATILE,
                  RegimeMetrics, RegimeParams, RegimeTracker, basket_risk_budget, break_even_sl,
+                 daily_target_hit,
                  breakout_levels, classify_regime, daily_loss_hit, floor_volume, hard_stop_hit,
                  lot_for_risk, make_order, pending_valid, per_order_risk, pl_at_sl,
                  range_entry, range_levels, resolve_preset, risk_budget_allows)
@@ -158,6 +159,38 @@ class TestGuards(unittest.TestCase):
                 self.assertLessEqual((peak - equity) + budget, peak * 0.30 + 1e-6)
                 self.assertLessEqual(max(0.0, day_start - equity) + budget, day_start * 0.12 + 1e-6)
                 self.assertGreaterEqual(budget, 0.25 * equity * 0.06 - 1e-9)
+
+    def test_target_aligned_x_for_10k_and_5_percent(self):
+        kw = dict(daily_target_pct=5.0, align_to_target=True)
+        # start of day: X = 500 / 3
+        b, st = basket_risk_budget(10_000, 10_000, 10_000, 6, 12, 30, **kw)
+        self.assertEqual(st, "ok")
+        self.assertAlmostEqual(b, 500 / 3)
+        # already +200 today: X = 300 / 3 so a full win lands exactly on +5%
+        b, _ = basket_risk_budget(10_200, 10_000, 10_200, 6, 12, 30, **kw)
+        self.assertAlmostEqual(b, 100.0)
+        # +480 today: remaining 20 -> below 10% of the full aligned X -> stop
+        self.assertEqual(basket_risk_budget(10_480, 10_000, 10_480, 6, 12, 30, **kw), (0.0, "near_target"))
+
+    def test_target_alignment_never_chases_losses_or_overshoots(self):
+        rng = random.Random(4)
+        kw = dict(daily_target_pct=5.0, align_to_target=True)
+        for _ in range(5000):
+            day_start = rng.uniform(5_000, 20_000)
+            equity = day_start * rng.uniform(0.9, 1.049)
+            peak = max(day_start, equity) * rng.uniform(1.0, 1.2)
+            b, st = basket_risk_budget(equity, day_start, peak, 6, 12, 30, **kw)
+            if st != "ok":
+                continue
+            self.assertLessEqual(b, day_start * 0.05 / 3 + 1e-9)  # never above target / 3
+            day_pl = equity - day_start
+            # a full winning basket (3X) never pushes the day beyond the target
+            self.assertLessEqual(max(0.0, day_pl) + 3 * b, day_start * 0.05 + 1e-6)
+
+    def test_daily_target_hit(self):
+        self.assertTrue(daily_target_hit(10_500, 10_000, 5))
+        self.assertFalse(daily_target_hit(10_499.99, 10_000, 5))
+        self.assertFalse(daily_target_hit(20_000, 10_000, 0))
 
     def test_stops(self):
         self.assertTrue(hard_stop_hit(7_000, 10_000, 30))

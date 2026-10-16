@@ -32,3 +32,8 @@
 - `TryStartBasket` computes the budget only when a basket would actually start (no log spam).
 - Tester diagnostics: `PrintExitStats()` from `OnTester()` — per grid type TP / SL / BE / EA-close counts and P/L, regime share, skipped levels; `OnTester` returns profit ÷ max equity DD for "Custom max" optimisation.
 - Version 1.10. README §3.1 research mode + changelog.
+
+## v1.20 (user: capital 10,000, wants ≥5%/day)
+- `InpDailyTargetPct` (5) + `CheckDailyTarget` (persisted `dTgt`, close-all, done for the day) and `InpAlignRiskToTarget` (X cap = remaining target / 3, no loss chasing) — ADR-004.
+- Budget order: halts → target cap → daily/DD throttle; throttle log only when daily/DD rooms bind.
+- Dashboard target line + "DONE FOR TODAY" status; stats count target days. Presets carry the new inputs. `sim/risk_table.py` documents the trade-off.

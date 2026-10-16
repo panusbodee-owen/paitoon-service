@@ -20,3 +20,6 @@ Thai trader/consultant running MT5 on a hedging account, trading XAUUSD; capital
 ## Scope
 **In:** regime detector, breakout grid, range grid with re-arm, fixed-risk lots, basket stop/target, daily loss, hard-stop, filters (spread/session/rollover/Friday/news-live), break-even, dashboard, presets, Thai README.
 **Out:** MT4, netting, multi-symbol, martingale, profit guarantees, optimisation of parameters (user backtests).
+
+## Iteration 3 (2026-10-16)
+User request: capital 10,000 USD, "remove losses", ≥ 5% profit/day. Outcome after discussion: daily target +5% as a **ceiling** (lock the day), risk sized to keep 1:3 under the cap (X = remaining/3). Explicitly not promised: 5% every day; removal of SL was declined by the user after seeing the numbers.

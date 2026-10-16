@@ -13,7 +13,7 @@
 //|  Python mirror of the pure logic: gold-grid-ea/sim/rgg.py        |
 //+------------------------------------------------------------------+
 #property copyright   "paitoon-service"
-#property version     "1.10"
+#property version     "1.20"
 #property description "Robbins Gold Grid: regime-switching XAUUSD grid with fixed 1:3 RR."
 #property description "Every order SL=1R / TP=3R. Basket stop -X% / target +3X%."
 #property description "Fixed-risk lots, daily loss limit, equity hard-stop. Hedging accounts only."
@@ -62,6 +62,8 @@ input int              InpGridLevels         = 3;     // Grid levels per side (1
 input int              InpCooldownBars       = 4;     // Cooldown after basket stop/target (signal bars)
 input bool             InpResetHardStop      = false; // Reset a triggered hard-stop when the EA starts
 input double           InpMinRiskFraction    = 0.25;  // Halt when daily/DD headroom < this fraction of X
+input double           InpDailyTargetPct     = 5.0;   // Daily profit target (% of day-start equity, 0 = off)
+input bool             InpAlignRiskToTarget  = true;  // X = remaining daily target / 3 (keeps 1:3 under the cap)
 
 input group "=== Regime detector ==="
 input ENUM_TIMEFRAMES  InpSignalTF           = PERIOD_M15; // Signal timeframe
@@ -195,6 +197,7 @@ double                  g_dayStartEquity = 0.0;
 datetime                g_dayStamp       = 0;
 bool                    g_dailyHalt      = false;
 bool                    g_hardHalt       = false;
+bool                    g_dailyTargetHit = false;
 datetime                g_cooldownUntil  = 0;
 
 // basket (persisted)
@@ -224,6 +227,7 @@ int                     g_statSkipLot    = 0;
 int                     g_statSkipMargin = 0;
 int                     g_statSkipBudget = 0;
 int                     g_statThrottled  = 0;
+int                     g_statTargetDays = 0;
 
 //====================================================================
 // 3. UTILITIES
@@ -381,6 +385,7 @@ void SaveGuards()
    GVSet("dayEq", g_dayStartEquity);
    GVSet("dHalt", g_dailyHalt ? 1.0 : 0.0);
    GVSet("hHalt", g_hardHalt ? 1.0 : 0.0);
+   GVSet("dTgt", g_dailyTargetHit ? 1.0 : 0.0);
    GVSet("cool", (double)g_cooldownUntil);
   }
 
@@ -391,6 +396,7 @@ void LoadGuards()
    g_dayStartEquity = GVGet("dayEq", 0.0);
    g_dailyHalt      = GVGet("dHalt", 0.0) > 0.5;
    g_hardHalt       = GVGet("hHalt", 0.0) > 0.5;
+   g_dailyTargetHit = GVGet("dTgt", 0.0) > 0.5;
    g_cooldownUntil  = (datetime)(long)GVGet("cool", 0.0);
   }
 
@@ -752,11 +758,26 @@ double BasketRiskBudget(const double equity)
                           dayRoom, 100.0 * InpMinRiskFraction, x));
       return 0.0;
      }
-   double budget = MathMin(x, MathMin(dayRoom, ddRoom));
-   if(budget < x - 1e-9)
+   // ADR-004: with a daily target the upside of a day is capped, so risking more than
+   // (remaining target) / 3 only adds downside. Losing days never raise X (no loss chasing).
+   double cap = x;
+   if(InpDailyTargetPct > 0.0 && InpAlignRiskToTarget)
+     {
+      double targetMoney = g_dayStartEquity * InpDailyTargetPct / 100.0;
+      double targetRoom  = targetMoney - MathMax(0.0, equity - g_dayStartEquity);
+      double aligned     = targetRoom / RR_RATIO;
+      if(aligned < 0.10 * targetMoney / RR_RATIO)
+        {
+         g_blockReason = "close to daily target";
+         return 0.0;
+        }
+      cap = MathMin(cap, aligned);
+     }
+   double budget = MathMin(cap, MathMin(dayRoom, ddRoom));
+   if(budget < cap - 1e-9)
      {
       g_statThrottled++;
-      Log(StringFormat("Risk throttled: X %.2f -> %.2f (daily room %.2f, DD room %.2f)", x, budget, dayRoom, ddRoom));
+      Log(StringFormat("Risk throttled: X %.2f -> %.2f (daily room %.2f, DD room %.2f)", cap, budget, dayRoom, ddRoom));
      }
    return budget;
   }
@@ -991,6 +1012,7 @@ void RefreshDayAndPeak(const double equity)
       g_dayStamp       = today;
       g_dayStartEquity = equity;
       g_dailyHalt      = false;
+      g_dailyTargetHit = false;
       SaveGuards();
       Log(StringFormat("New trading day, start equity %.2f", equity));
      }
@@ -1029,6 +1051,28 @@ bool CheckDailyLoss(const double equity)
    if(g_dailyHalt && (CountPositions() > 0 || CountPendings() > 0))
       RequestCloseAll("daily loss limit", false);
    return g_dailyHalt;
+  }
+
+// Daily profit target: lock the day once equity is up InpDailyTargetPct from day start.
+bool CheckDailyTarget(const double equity)
+  {
+   if(InpDailyTargetPct <= 0.0 || g_dayStartEquity <= 0.0)
+     {
+      g_dailyTargetHit = false;
+      return false;
+     }
+   if(!g_dailyTargetHit && equity >= g_dayStartEquity * (1.0 + InpDailyTargetPct / 100.0))
+     {
+      g_dailyTargetHit = true;
+      g_statTargetDays++;
+      SaveGuards();
+      Notify(StringFormat("DAILY TARGET reached: equity %.2f is +%.1f%% over day start %.2f. Closing all, done for today.",
+                          equity, InpDailyTargetPct, g_dayStartEquity));
+      RequestCloseAll("daily target", false);
+     }
+   if(g_dailyTargetHit && (CountPositions() > 0 || CountPendings() > 0))
+      RequestCloseAll("daily target", false);
+   return g_dailyTargetHit;
   }
 
 void CheckBasket()
@@ -1157,6 +1201,8 @@ bool EntryFiltersOk(const MqlTick &tk)
       g_blockReason = "hard-stop";
    else if(g_dailyHalt)
       g_blockReason = "daily limit";
+   else if(g_dailyTargetHit)
+      g_blockReason = "daily target reached";
    else if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) || !MQLInfoInteger(MQL_TRADE_ALLOWED))
       g_blockReason = "algo trading disabled";
    else if((ENUM_SYMBOL_TRADE_MODE)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_MODE) != SYMBOL_TRADE_MODE_FULL)
@@ -1543,6 +1589,7 @@ void UpdateDashboard(const MqlTick &tk)
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
    string status = g_hardHalt ? "HALTED (equity hard-stop) - set InpResetHardStop=true to resume"
                    : g_dailyHalt ? "PAUSED (daily loss limit) until next server day"
+                   : g_dailyTargetHit ? "DONE FOR TODAY (daily target reached)"
                    : g_closing ? "CLOSING (" + g_closingReason + ")"
                    : (g_blockReason == "" ? "ACTIVE" : "waiting: " + g_blockReason);
    string basket = "Basket: none";
@@ -1559,9 +1606,13 @@ void UpdateDashboard(const MqlTick &tk)
    double dayPL = equity - g_dayStartEquity;
    double dd    = g_peakEquity > 0.0 ? 100.0 * (g_peakEquity - equity) / g_peakEquity : 0.0;
    double dayPct = g_dayStartEquity > 0.0 ? 100.0 * dayPL / g_dayStartEquity : 0.0;
-   string text = StringFormat("%s v1.10 | %s | magic %I64d\n", EA_NAME, _Symbol, InpMagic);
-   text += StringFormat("Preset %s: X %.1f%%  daily %.1f%%  max DD %.1f%%  RR 1:%.0f\n",
+   string text = StringFormat("%s v1.20 | %s | magic %I64d\n", EA_NAME, _Symbol, InpMagic);
+   text += StringFormat("Preset %s: X max %.1f%%  daily loss %.1f%%  max DD %.1f%%  RR 1:%.0f\n",
                         PresetName(), g_basketPct, g_dailyPct, g_maxDDPct, RR_RATIO);
+   if(InpDailyTargetPct > 0.0)
+      text += StringFormat("Daily target +%.1f%% (%.2f)%s  progress %.2f%%\n", InpDailyTargetPct,
+                           g_dayStartEquity * InpDailyTargetPct / 100.0,
+                           InpAlignRiskToTarget ? "  X = remaining / 3" : "", dayPct);
    text += StringFormat("Regime: %s (candidate %s %d/%d)  ATR %.2f  spread %.2f\n",
                         RegimeName(g_regime), RegimeName(g_candidate), g_candCount, InpConfirmBars,
                         g_atr, tk.ask - tk.bid);
@@ -1623,6 +1674,8 @@ bool InputsValid()
       return false;
    if(InpPendingExpiryBars < 1 || InpBreakoutEntryBars < 1 || InpMaxSpread <= 0.0)
       return false;
+   if(InpDailyTargetPct < 0.0 || InpDailyTargetPct > 100.0 || InpMinRiskFraction < 0.0 || InpMinRiskFraction > 1.0)
+      return false;
    return true;
   }
 
@@ -1683,6 +1736,7 @@ int OnInit()
       g_dayStamp       = DayStart(TimeCurrent());
       g_dayStartEquity = equity;
       g_dailyHalt      = false;
+      g_dailyTargetHit = false;
      }
    SaveGuards();
 
@@ -1784,6 +1838,7 @@ void PrintExitStats()
                   100.0 * g_regimeBars[REGIME_VOLATILE] / bars, 100.0 * g_regimeBars[REGIME_NEUTRAL] / bars);
    PrintFormat("[RGG] Skipped levels: lot below minimum %d | margin %d | risk budget %d | throttled baskets %d",
                g_statSkipLot, g_statSkipMargin, g_statSkipBudget, g_statThrottled);
+   PrintFormat("[RGG] Days that reached the daily target: %d", g_statTargetDays);
    PrintFormat("[RGG] Status at end: %s", g_hardHalt ? "HARD-STOP" : g_dailyHalt ? "daily pause" : "running");
   }
 
@@ -1821,6 +1876,8 @@ void OnTick()
    bool halted = CheckHardStop(equity);
    if(!halted)
       halted = CheckDailyLoss(equity);
+   if(!halted)
+      halted = CheckDailyTarget(equity);
    if(g_closing)
      {
       ProcessClosing();

@@ -177,11 +177,15 @@ def risk_budget_allows(realized: float, positions: List[Order], pendings: List[O
 
 def basket_risk_budget(equity: float, day_start_equity: float, peak_equity: float,
                        basket_pct: float, daily_loss_pct: float, max_dd_pct: float,
-                       min_fraction: float = 0.25):
-    """Risk throttle for a new basket (ADR-003). Mirrors BasketRiskBudget().
+                       min_fraction: float = 0.25, daily_target_pct: float = 0.0,
+                       align_to_target: bool = False):
+    """Risk budget for a new basket. Mirrors BasketRiskBudget().
 
-    Returns (budget, status): X shrunk to the remaining daily / drawdown headroom,
-    or 0 with an explicit halt status when the headroom is below min_fraction of X.
+    ADR-003: X shrinks to the remaining daily / drawdown headroom; explicit halt
+    when that headroom is below min_fraction of X.
+    ADR-004: with a daily target, X <= (remaining target) / 3 so a full winning
+    basket lands on the target; losing days never raise X above target / 3.
+    Returns (budget, status).
     """
     x = equity * basket_pct / 100.0
     day_room = day_start_equity * daily_loss_pct / 100.0 - max(0.0, day_start_equity - equity)
@@ -191,7 +195,19 @@ def basket_risk_budget(equity: float, day_start_equity: float, peak_equity: floa
         return 0.0, "hard_stop"
     if day_room < floor_x:
         return 0.0, "daily_halt"
-    return min(x, day_room, dd_room), "ok"
+    cap = x
+    if daily_target_pct > 0 and align_to_target:
+        target_money = day_start_equity * daily_target_pct / 100.0
+        target_room = target_money - max(0.0, equity - day_start_equity)
+        aligned = target_room / RR_RATIO
+        if aligned < 0.10 * target_money / RR_RATIO:
+            return 0.0, "near_target"
+        cap = min(cap, aligned)
+    return min(cap, day_room, dd_room), "ok"
+
+
+def daily_target_hit(equity: float, day_start_equity: float, daily_target_pct: float) -> bool:
+    return daily_target_pct > 0 and equity >= day_start_equity * (1.0 + daily_target_pct / 100.0)
 
 
 def hard_stop_hit(equity: float, peak_equity: float, max_dd_pct: float) -> bool:

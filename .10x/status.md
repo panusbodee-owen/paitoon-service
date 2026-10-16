@@ -33,3 +33,9 @@
 - [x] README research mode, changelog
 - [ ] User re-runs backtest in research mode (v1.10)
 - [ ] Entry-edge research (needs exported M15 data)
+
+## Iteration 3 — v1.20 (2026-10-16)
+- Trigger: user wants ≥ 5%/day on 10,000 USD, "remove losses". Discussed; user chose daily target + keep SL + X = remaining target / 3.
+- [x] ADR-004, EA v1.20, mirror + 3 tests (30/30), presets, README, `sim/risk_table.py`
+- [ ] User compiles v1.20 and backtests (10,000 USD, target 5 and target 0 runs)
+- [ ] Entry-edge research (needs exported M15 data)

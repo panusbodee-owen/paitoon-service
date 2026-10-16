@@ -1,7 +1,7 @@
 # Handoff
 
-**From:** SDE/QA (iteration 2, v1.10) → **To:** User, then Research (entry edge)
+**From:** SDE/QA (iteration 3, v1.20) → **To:** User, then Research (entry edge)
 
-- Fixed silent stall (ADR-003). Added exit statistics to the tester Journal.
-- Ask user: re-run with README §3.1 settings and send the `[RGG]` statistics lines + report; export M15 XAUUSD bars (CSV) for an offline research backtester.
-- Open hypothesis: entries have no edge (≈ random-walk hit rates); BE at +1R converts most potential 3R wins into ~0R exits.
+- v1.20: daily target +5% (ceiling), X = remaining target / 3, SL/RR 1:3 and all guards unchanged.
+- Ask user: compile, backtest 2024→now with 10,000 USD twice (target 5 / target 0), send report + `[RGG]` Journal stats; export M15 CSV for offline research.
+- Expectation management: 5% days need a full winning basket; the strategy's entry edge is still unproven.
