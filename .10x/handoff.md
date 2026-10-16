@@ -1,7 +1,9 @@
 # Handoff
 
-**From:** QA + Security → **To:** DevOps + SRE
+**From:** DevOps + SRE → **To:** User / next iteration
 
-- QA report: `.10x/reviews/2026-10-16-qa-report.md` (23/23, parity clean, compile pending user-side).
-- Security: `.10x/reviews/2026-10-16-security-review.md` (no vulns).
-- Release target: v1.00 for tester/demo. Need: delivery path (file handoff + branch), CI for the Python mirror, ops runbook/monitoring for live use.
+- Deliverable: `gold-grid-ea/RobbinsGoldGrid.mq5` (+ presets, README in Thai) on branch `claude/gold-grid-ea`.
+- Runbook: `gold-grid-ea/README.md` §5; SRE objectives `.10x/decisions/sre/gold-grid-ea.md`.
+- CI: `.github/workflows/gold-grid-ea-tests.yml`.
+- Escalation: user sends MetaEditor compile errors / tester logs → fix loop (SDE), re-run mirror tests.
+- Open items: (1) user compile result, (2) tester checklist results, (3) parameter tuning after backtests.

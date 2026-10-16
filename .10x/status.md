@@ -8,9 +8,9 @@
 | 3. Planning | ✅ Complete — T1–T9 |
 | 4. Implementation | ✅ Complete — EA, presets, sim, README |
 | 5. Verification | ✅ Complete — 23/23 tests, 6 bugs fixed, security OK |
-| 6. Delivery | ⏳ |
+| 6. Delivery | ✅ Complete — CI for mirror tests, rollout + rollback, runbook |
 
-**Current phase:** Verification Complete
+**Current phase:** Delivery Complete — final sign-off (pending user compile)
 **Release readiness:** v1.00 for Strategy Tester + Demo; live only after user compile + checklist
 **Blockers:** none
 

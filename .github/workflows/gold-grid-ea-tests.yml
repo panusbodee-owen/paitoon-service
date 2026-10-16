@@ -1,0 +1,25 @@
+name: Gold Grid EA logic tests
+
+on:
+  push:
+    paths:
+      - "gold-grid-ea/**"
+      - ".github/workflows/gold-grid-ea-tests.yml"
+  pull_request:
+    paths:
+      - "gold-grid-ea/**"
+
+permissions:
+  contents: read
+
+jobs:
+  mirror-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run Python mirror tests (stdlib unittest)
+        working-directory: gold-grid-ea/sim
+        run: python -m unittest -v
