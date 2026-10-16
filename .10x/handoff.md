@@ -1,10 +1,7 @@
 # Handoff
 
-**From:** SDE (+ DBA) → **To:** QA + Security
+**From:** QA + Security → **To:** DevOps + SRE
 
-## Built
-`gold-grid-ea/` — single-file EA `RobbinsGoldGrid.mq5`, 3 presets, Python mirror + 23 tests (all passing), Thai README. Deviations listed in `.10x/decisions/sde/gold-grid-ea.md`.
-
-## Please verify
-- QA: mirror ↔ MQL5 formula parity; restart behaviour; filters; invariants; RR exactness; compile-risk review of MQL5 APIs.
-- Security: no DLL/WebRequest/file I/O; input validation; magic/symbol isolation; GV tampering impact; notification content.
+- QA report: `.10x/reviews/2026-10-16-qa-report.md` (23/23, parity clean, compile pending user-side).
+- Security: `.10x/reviews/2026-10-16-security-review.md` (no vulns).
+- Release target: v1.00 for tester/demo. Need: delivery path (file handoff + branch), CI for the Python mirror, ops runbook/monitoring for live use.

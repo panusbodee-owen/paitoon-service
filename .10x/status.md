@@ -7,10 +7,11 @@
 | 2. Design | ✅ Complete — ADR-001, ADR-002 |
 | 3. Planning | ✅ Complete — T1–T9 |
 | 4. Implementation | ✅ Complete — EA, presets, sim, README |
-| 5. Verification | ⏳ |
+| 5. Verification | ✅ Complete — 23/23 tests, 6 bugs fixed, security OK |
 | 6. Delivery | ⏳ |
 
-**Current phase:** Implementation Complete
+**Current phase:** Verification Complete
+**Release readiness:** v1.00 for Strategy Tester + Demo; live only after user compile + checklist
 **Blockers:** none
 
 ## Tasks
