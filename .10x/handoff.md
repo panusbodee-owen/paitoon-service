@@ -1,8 +1,5 @@
 # Handoff
 
-**From:** Architect + Staff Engineer → **To:** Engineering Manager + Senior Engineer
+**From:** EM + Senior Engineer → **To:** SDE (+ DBA lens on persisted state)
 
-- ADR-001 (strategy architecture + risk invariant), ADR-002 (single-file delivery).
-- Components and failure modes: `.10x/decisions/architect/gold-grid-ea.md`
-- Conventions: `.10x/decisions/staff-engineer/gold-grid-ea.md`
-- Next: break into tasks; Python mirror first (testable here), then MQL5, then presets/README.
+Ordered tasks T1–T9 in `.10x/decisions/engineering-manager/gold-grid-ea.md`; approach and tricky parts in `.10x/decisions/senior-engineer/gold-grid-ea.md`. ADR-001/002 exist → implementation allowed.
