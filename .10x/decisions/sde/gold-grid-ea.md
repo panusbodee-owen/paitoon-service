@@ -37,3 +37,9 @@
 - `InpDailyTargetPct` (5) + `CheckDailyTarget` (persisted `dTgt`, close-all, done for the day) and `InpAlignRiskToTarget` (X cap = remaining target / 3, no loss chasing) — ADR-004.
 - Budget order: halts → target cap → daily/DD throttle; throttle log only when daily/DD rooms bind.
 - Dashboard target line + "DONE FOR TODAY" status; stats count target days. Presets carry the new inputs. `sim/risk_table.py` documents the trade-off.
+
+## v2.00 (ADR-005) — strategy core rewritten
+- Removed: regime detector, range/breakout grids, % presets, basket X/throttle, daily target, regime persistence.
+- Added: `UpdateTrend` (H1 EMA50/200 + slope + ADX), `DetectSignal` (M15 EMA20 touch, RSI dip, EMA50 hold, engulfing/pin, ATR spike filter, structural SL), `StartSetup`/`PlaceLayer` (market layer + limit layers, shared SL, TP 3R each), fixed money sizing (`InpRiskMoney`), `RefreshDailyLosses` + `CheckDailyLosses` (stop after N losing trades), `LayersAllowed` (cap by remaining losses), RR re-alignment after slippage, setup backstop (110% of budget), optional hard-stop (`InpMaxDDPct` 0 = off).
+- Persistence prefix `RGG2.` (v1 keys ignored). Presets replaced by `RobbinsGoldGrid_v2_Default.set`.
+- Tester stats: evaluation reasons histogram, setups, layers placed/skipped, per-layer TP/SL/other and TP rate vs 25% break-even.

@@ -1,7 +1,7 @@
 # Handoff
 
-**From:** SDE/QA (iteration 3, v1.20) → **To:** User, then Research (entry edge)
+**From:** SDE/QA (iteration 4, v2.00) → **To:** User, then Research
 
-- v1.20: daily target +5% (ceiling), X = remaining target / 3, SL/RR 1:3 and all guards unchanged.
-- Ask user: compile, backtest 2024→now with 10,000 USD twice (target 5 / target 0), send report + `[RGG]` Journal stats; export M15 CSV for offline research.
-- Expectation management: 5% days need a full winning basket; the strategy's entry edge is still unproven.
+- v2.00 = Trend + Pullback + Confirm grid, fixed money risk (5/15), stop after 3 losing trades/day, hard-stop off, no daily target (ADR-005, spec v2).
+- Ask user: compile (F7) and backtest XAUUSD M15 2024→now with real ticks; send report + `[RGG]` lines (reason histogram, per-layer TP rate). TP rate > 25% after costs = edge.
+- Tuning knobs if too few signals: `InpADXMin`, `InpRSIPullback`, `InpPullbackBars`. M15 CSV export still the fastest path to offline parameter research.

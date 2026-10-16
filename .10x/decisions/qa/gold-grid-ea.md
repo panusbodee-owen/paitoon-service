@@ -11,3 +11,9 @@
 
 ## v1.20
 - 30 tests pass (+3: aligned X for 10k/5% incl. near-target stop; 5,000-case property: X ≤ target/3 and a full win never overshoots the target; daily target boundary).
+
+## v2.00
+- Mirror rewritten (`rgg.py`) + `setup_sim.py` (day simulation); 24 tests pass: layer RR (5,000 random), shared-SL layer geometry, RR repair after slippage, fixed-money sizing incl. the user's 30$ example and 10k scaling, skip-not-round-up, layers capped by remaining losses, candle patterns, signal conditions + every rejection reason (buy/sell), 300 simulated days (30$ and 10k) — every trade −1R/+3R within risk, losses/day ≤ 3.
+- Static: brace/paren balance, no undefined/duplicate functions, 6 signal params parity-checked against the mirror, README example table recomputed by the mirror.
+- 2 test-expectation bugs found and fixed (a "flat" candle that was really a pin bar; small-account lots can exceed 0.01 when the SL is tight).
+- Not verifiable here: compile, live/tester behaviour, entry edge.

@@ -43,7 +43,8 @@
 ## Iteration 4 — v2.0 (2026-10-16)
 - Trigger: user requirements 1–7 (remove 30% stop, 30–10k accounts, lose 5/win 15, stop after 3 losses/day, M15 smarter entries, precise grid).
 - Decisions: fixed money risk, no daily target, Trend + Pullback + Confirm. Spec `.10x/specs/2026-10-16-gold-grid-ea-v2-design.md`, ADR-005.
-- [ ] Mirror (rgg.py) + tests
-- [ ] EA v2.00
-- [ ] README v2, presets
-- [ ] QA review + push
+- [x] Mirror (rgg.py, setup_sim.py) + 24 tests
+- [x] EA v2.00
+- [x] README v2, default preset
+- [x] QA review + push
+- [ ] User compiles v2.00 and backtests M15 2024→now; send `[RGG]` Journal stats
