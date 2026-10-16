@@ -1,0 +1,17 @@
+; Robbins Gold Grid - Balanced preset (XAUUSD, M15 chart)
+; Load in Strategy Tester (Inputs tab > right-click > Load) or in the EA inputs dialog.
+InpRiskPreset=1
+InpGridLevels=3
+InpCooldownBars=4
+InpResetHardStop=false
+InpSignalTF=15
+InpContextTF=16385
+InpMaxSpread=0.50
+InpSessionStartHour=7
+InpSessionEndHour=21
+InpAvoidRollover=true
+InpFridayCutoffHour=20
+InpCloseAllFriday=false
+InpUseBreakEven=true
+InpRangeRearm=true
+InpMagic=20261016
