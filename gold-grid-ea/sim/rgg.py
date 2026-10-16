@@ -175,13 +175,23 @@ def risk_budget_allows(realized: float, positions: List[Order], pendings: List[O
     return wc >= -basket_risk_money * 1.0001
 
 
-def account_gate(equity: float, day_start_equity: float, peak_equity: float,
-                 daily_loss_pct: float, max_dd_pct: float, basket_risk_money: float) -> bool:
-    daily_used = max(0.0, day_start_equity - equity)
-    dd_used = max(0.0, peak_equity - equity)
-    daily_ok = daily_used + basket_risk_money <= day_start_equity * daily_loss_pct / 100.0
-    dd_ok = dd_used + basket_risk_money <= peak_equity * max_dd_pct / 100.0
-    return daily_ok and dd_ok
+def basket_risk_budget(equity: float, day_start_equity: float, peak_equity: float,
+                       basket_pct: float, daily_loss_pct: float, max_dd_pct: float,
+                       min_fraction: float = 0.25):
+    """Risk throttle for a new basket (ADR-003). Mirrors BasketRiskBudget().
+
+    Returns (budget, status): X shrunk to the remaining daily / drawdown headroom,
+    or 0 with an explicit halt status when the headroom is below min_fraction of X.
+    """
+    x = equity * basket_pct / 100.0
+    day_room = day_start_equity * daily_loss_pct / 100.0 - max(0.0, day_start_equity - equity)
+    dd_room = peak_equity * max_dd_pct / 100.0 - max(0.0, peak_equity - equity)
+    floor_x = x * min_fraction
+    if dd_room < floor_x:
+        return 0.0, "hard_stop"
+    if day_room < floor_x:
+        return 0.0, "daily_halt"
+    return min(x, day_room, dd_room), "ok"
 
 
 def hard_stop_hit(equity: float, peak_equity: float, max_dd_pct: float) -> bool:

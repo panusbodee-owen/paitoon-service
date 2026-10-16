@@ -1,9 +1,7 @@
 # Handoff
 
-**From:** DevOps + SRE → **To:** User / next iteration
+**From:** SDE/QA (iteration 2, v1.10) → **To:** User, then Research (entry edge)
 
-- Deliverable: `gold-grid-ea/RobbinsGoldGrid.mq5` (+ presets, README in Thai) on branch `claude/gold-grid-ea`.
-- Runbook: `gold-grid-ea/README.md` §5; SRE objectives `.10x/decisions/sre/gold-grid-ea.md`.
-- CI: `.github/workflows/gold-grid-ea-tests.yml`.
-- Escalation: user sends MetaEditor compile errors / tester logs → fix loop (SDE), re-run mirror tests.
-- Open items: (1) user compile result, (2) tester checklist results, (3) parameter tuning after backtests.
+- Fixed silent stall (ADR-003). Added exit statistics to the tester Journal.
+- Ask user: re-run with README §3.1 settings and send the `[RGG]` statistics lines + report; export M15 XAUUSD bars (CSV) for an offline research backtester.
+- Open hypothesis: entries have no edge (≈ random-walk hit rates); BE at +1R converts most potential 3R wins into ~0R exits.

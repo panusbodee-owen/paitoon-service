@@ -74,7 +74,7 @@ Expert Advisor สำหรับ MetaTrader 5 เทรดทองคำ (XAUU
 **ด่านกันพอร์ต (ตรวจทุก tick ตามลำดับ)**
 1. **Equity hard-stop:** equity ≤ peak × (1 − MaxDD%) → ปิดทั้งหมด, halt ถาวร (persist) จนกว่าผู้ใช้ตั้ง `InpResetHardStop = true`
 2. **Daily loss:** equity ≤ dayStart × (1 − DailyLoss%) → ปิดทั้งหมด, หยุดถึงวันใหม่ (เวลาเซิร์ฟเวอร์)
-3. **Gate เปิดตะกร้าใหม่:** (dayStart − equity) + X ≤ DailyLoss **และ** (peak − equity) + X ≤ MaxDD
+3. **Risk throttle (v1.10, ADR-003):** X ของตะกร้าใหม่ = min(X, ที่ว่างรายวัน, ที่ว่าง DD); ถ้าที่ว่างใดน้อยกว่า 0.25·X → halt แบบประกาศชัด (DD → hard-stop, รายวัน → พักถึงวันใหม่). ~~v1.00: gate ต้องมีที่ว่างเต็ม X~~ — ทำให้หยุดเทรดถาวรแบบเงียบ
 4. **Filter:** spread ≤ 0.50, ชั่วโมงเทรด 07–21 (server), เลี่ยง rollover 23:00–01:00, ศุกร์ ≥ 20:00 ไม่เปิดใหม่; นอกช่วงเวลา/ศุกร์ → ลบ pending
 5. **Break-even:** ราคาไปได้ ≥ 1R → SL ไปที่ entry ± 0.05R (TP คงที่ 3R)
 6. **ไม้ไม่มี SL:** ใส่ SL/TP 1:3 ทันที; ถ้าราคาเลย SL ที่ควรเป็นไปแล้ว → ปิดไม้

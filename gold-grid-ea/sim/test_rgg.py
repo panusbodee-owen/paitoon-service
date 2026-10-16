@@ -9,7 +9,7 @@ import unittest
 from basket_sim import CONTRACT, TICK, simulate_basket
 from rgg import (BUY, SELL, Order, RR_RATIO, RR_TOLERANCE, REGIME_BREAKOUT_DOWN,
                  REGIME_BREAKOUT_UP, REGIME_NEUTRAL, REGIME_RANGE, REGIME_VOLATILE,
-                 RegimeMetrics, RegimeParams, RegimeTracker, account_gate, break_even_sl,
+                 RegimeMetrics, RegimeParams, RegimeTracker, basket_risk_budget, break_even_sl,
                  breakout_levels, classify_regime, daily_loss_hit, floor_volume, hard_stop_hit,
                  lot_for_risk, make_order, pending_valid, per_order_risk, pl_at_sl,
                  range_entry, range_levels, resolve_preset, risk_budget_allows)
@@ -124,11 +124,40 @@ class TestGuards(unittest.TestCase):
         c.volume = 0.30
         self.assertFalse(risk_budget_allows(-50.0, [a], [b], c, 600.0, CONTRACT))
 
-    def test_account_gate(self):
-        self.assertTrue(account_gate(10_000, 10_000, 10_000, 12, 30, 600))
-        self.assertFalse(account_gate(9_000, 10_000, 10_000, 12, 30, 600))   # 1000+600 > 1200
-        self.assertFalse(account_gate(7_500, 7_500, 10_000, 12, 30, 600))    # dd 2500+600 > 3000
-        self.assertTrue(account_gate(9_400, 10_000, 10_000, 12, 30, 600))    # 600+600 = 1200
+    def test_risk_budget_full_x_when_room(self):
+        self.assertEqual(basket_risk_budget(10_000, 10_000, 10_000, 6, 12, 30), (600.0, "ok"))
+
+    def test_risk_budget_throttles_instead_of_blocking(self):
+        # day: 1200 limit, 700 used -> 500 room < X 552 -> throttled to 500
+        budget, status = basket_risk_budget(9_300, 10_000, 10_000, 6, 12, 30)
+        self.assertEqual(status, "ok")
+        self.assertAlmostEqual(budget, 500.0)
+
+    def test_regression_v100_silent_stall(self):
+        # User backtest 2024 (500$ deposit, Robbins): peak equity 576.40, equity 428.16.
+        # v1.00 required dd_used + X <= 30% of peak (173.93 > 172.92) and never traded again.
+        budget, status = basket_risk_budget(428.16, 428.16, 576.40, 6, 12, 30)
+        self.assertEqual(status, "ok")
+        self.assertAlmostEqual(budget, 576.40 * 0.30 - (576.40 - 428.16), places=6)  # 24.68
+        self.assertGreater(budget, 0.0)
+
+    def test_risk_budget_explicit_halts(self):
+        # DD room 3000-2950 = 50 < 25% of X (423) -> hard stop, never a silent idle
+        self.assertEqual(basket_risk_budget(7_050, 7_050, 10_000, 6, 12, 30), (0.0, "hard_stop"))
+        # daily room 1200-1150 = 50 < 25% of X -> paused for the day
+        self.assertEqual(basket_risk_budget(8_850, 10_000, 10_000, 6, 12, 30), (0.0, "daily_halt"))
+
+    def test_risk_budget_never_crosses_limits(self):
+        rng = random.Random(3)
+        for _ in range(5000):
+            peak = rng.uniform(1_000, 20_000)
+            equity = peak * rng.uniform(0.6, 1.0)
+            day_start = max(equity, peak * rng.uniform(0.6, 1.0))
+            budget, status = basket_risk_budget(equity, day_start, peak, 6, 12, 30)
+            if status == "ok":
+                self.assertLessEqual((peak - equity) + budget, peak * 0.30 + 1e-6)
+                self.assertLessEqual(max(0.0, day_start - equity) + budget, day_start * 0.12 + 1e-6)
+                self.assertGreaterEqual(budget, 0.25 * equity * 0.06 - 1e-9)
 
     def test_stops(self):
         self.assertTrue(hard_stop_hit(7_000, 10_000, 30))

@@ -13,7 +13,7 @@
 //|  Python mirror of the pure logic: gold-grid-ea/sim/rgg.py        |
 //+------------------------------------------------------------------+
 #property copyright   "paitoon-service"
-#property version     "1.00"
+#property version     "1.10"
 #property description "Robbins Gold Grid: regime-switching XAUUSD grid with fixed 1:3 RR."
 #property description "Every order SL=1R / TP=3R. Basket stop -X% / target +3X%."
 #property description "Fixed-risk lots, daily loss limit, equity hard-stop. Hedging accounts only."
@@ -61,6 +61,7 @@ input double           InpCustomMaxDDPct     = 30.0;  // Custom: equity hard-sto
 input int              InpGridLevels         = 3;     // Grid levels per side (1-10)
 input int              InpCooldownBars       = 4;     // Cooldown after basket stop/target (signal bars)
 input bool             InpResetHardStop      = false; // Reset a triggered hard-stop when the EA starts
+input double           InpMinRiskFraction    = 0.25;  // Halt when daily/DD headroom < this fraction of X
 
 input group "=== Regime detector ==="
 input ENUM_TIMEFRAMES  InpSignalTF           = PERIOD_M15; // Signal timeframe
@@ -215,6 +216,14 @@ datetime                g_newsCheckedAt = 0;
 bool                    g_newsActive    = false;
 string                  g_blockReason   = "";
 uint                    g_lastDashMs    = 0;
+
+// tester statistics (printed by OnTester)
+int                     g_regimeBars[5];
+int                     g_statBaskets[3];
+int                     g_statSkipLot    = 0;
+int                     g_statSkipMargin = 0;
+int                     g_statSkipBudget = 0;
+int                     g_statThrottled  = 0;
 
 //====================================================================
 // 3. UTILITIES
@@ -716,14 +725,40 @@ bool RiskBudgetAllows(const double plAtSlNew)
    return worst + plAtSlNew >= -g_basket.riskMoney * 1.0001;
   }
 
-// Gate for a NEW basket: daily-loss and peak-drawdown headroom must each fit one full X.
-bool AccountGateOk(const double equity, const double riskMoney)
+// Risk throttle for a NEW basket (ADR-003, mirrors rgg.basket_risk_budget):
+// X shrinks to the remaining daily / drawdown headroom so a new basket can never
+// cross either limit. When the headroom is below InpMinRiskFraction of X the EA halts
+// explicitly (drawdown: hard-stop, daily: until the next server day) instead of idling
+// silently - v1.00 blocked new baskets forever once DD + X exceeded the limit.
+double BasketRiskBudget(const double equity)
   {
-   double dailyUsed = MathMax(0.0, g_dayStartEquity - equity);
-   double ddUsed    = MathMax(0.0, g_peakEquity - equity);
-   bool dailyOk = dailyUsed + riskMoney <= g_dayStartEquity * g_dailyPct / 100.0;
-   bool ddOk    = ddUsed + riskMoney <= g_peakEquity * g_maxDDPct / 100.0;
-   return dailyOk && ddOk;
+   double x       = equity * g_basketPct / 100.0;
+   double dayRoom = g_dayStartEquity * g_dailyPct / 100.0 - MathMax(0.0, g_dayStartEquity - equity);
+   double ddRoom  = g_peakEquity * g_maxDDPct / 100.0 - MathMax(0.0, g_peakEquity - equity);
+   double floorX  = x * InpMinRiskFraction;
+   if(ddRoom < floorX)
+     {
+      g_hardHalt = true;
+      SaveGuards();
+      Notify(StringFormat("EQUITY HARD-STOP: drawdown headroom %.2f is below %.0f%% of one basket (X = %.2f). Trading halted until reset.",
+                          ddRoom, 100.0 * InpMinRiskFraction, x));
+      return 0.0;
+     }
+   if(dayRoom < floorX)
+     {
+      g_dailyHalt = true;
+      SaveGuards();
+      Notify(StringFormat("DAILY LIMIT: daily headroom %.2f is below %.0f%% of one basket (X = %.2f). Paused until next day.",
+                          dayRoom, 100.0 * InpMinRiskFraction, x));
+      return 0.0;
+     }
+   double budget = MathMin(x, MathMin(dayRoom, ddRoom));
+   if(budget < x - 1e-9)
+     {
+      g_statThrottled++;
+      Log(StringFormat("Risk throttled: X %.2f -> %.2f (daily room %.2f, DD room %.2f)", x, budget, dayRoom, ddRoom));
+     }
+   return budget;
   }
 
 //====================================================================
@@ -901,6 +936,8 @@ void BeginBasket(const int type, const int dir, const double equity, const doubl
    g_realized           = 0.0;
    g_historyDirty       = true;
    SaveBasket();
+   if(type >= 0 && type < 3)
+      g_statBaskets[type]++;
    Log(StringFormat("Basket START %s dir %d | X = %.2f (%.2f%%) | target %.2f | R = %s",
                     BasketName(type), dir, riskMoney, g_basketPct, RR_RATIO * riskMoney,
                     DoubleToString(r, g_digits)));
@@ -1270,6 +1307,7 @@ bool UpdateRegime()
         }
      }
    SaveRegime();
+   g_regimeBars[(int)g_regime]++;
    if(prev != g_regime)
       Log(StringFormat("Regime %s -> %s | ATR %.2f avg %.2f ADX %.1f BBW%% %.0f box %s-%s",
                        RegimeName(prev), RegimeName(g_regime), m.atr, m.atrAvg, m.adx, m.bbwPct,
@@ -1309,11 +1347,13 @@ bool PlaceGridOrder(const int basketType, const int dir, const int level, const 
    double lots = LotForRisk(dir, entry, sl, riskMoney);
    if(lots <= 0.0)
      {
+      g_statSkipLot++;
       Log(StringFormat("Level %d skipped: lot for %.2f risk is below the broker minimum", level, riskMoney));
       return false;
      }
    if(!MarginOk(dir, lots, entry))
      {
+      g_statSkipMargin++;
       Log(StringFormat("Level %d skipped: not enough free margin for %.2f lots", level, lots));
       return false;
      }
@@ -1322,6 +1362,7 @@ bool PlaceGridOrder(const int basketType, const int dir, const int level, const 
       return false;
    if(!RiskBudgetAllows(plAtSl))
      {
+      g_statSkipBudget++;
       Log(StringFormat("Level %d skipped: basket risk budget X = %.2f would be exceeded", level, g_basket.riskMoney));
       return false;
      }
@@ -1419,19 +1460,21 @@ void TryStartBasket(const MqlTick &tk)
      }
    if(!EntryFiltersOk(tk))
       return;
-   double equity    = AccountInfoDouble(ACCOUNT_EQUITY);
-   double riskMoney = equity * g_basketPct / 100.0;
-   if(!AccountGateOk(equity, riskMoney))
-     {
-      g_blockReason = "no daily/DD headroom for a full basket";
-      return;
-     }
    bool boWindow = g_barsSinceBO < InpBreakoutEntryBars && !g_boTraded;
+   int  boDir    = 0;
    if(g_regime == REGIME_BREAKOUT_UP && boWindow)
-      StartBreakoutBasket(1, tk, equity, riskMoney);
+      boDir = 1;
    else if(g_regime == REGIME_BREAKOUT_DOWN && boWindow)
-      StartBreakoutBasket(-1, tk, equity, riskMoney);
-   else if(g_regime == REGIME_RANGE)
+      boDir = -1;
+   else if(g_regime != REGIME_RANGE)
+      return;
+   double equity    = AccountInfoDouble(ACCOUNT_EQUITY);
+   double riskMoney = BasketRiskBudget(equity);
+   if(riskMoney <= 0.0)
+      return;
+   if(boDir != 0)
+      StartBreakoutBasket(boDir, tk, equity, riskMoney);
+   else
       StartRangeBasket(tk, equity, riskMoney);
   }
 
@@ -1516,7 +1559,7 @@ void UpdateDashboard(const MqlTick &tk)
    double dayPL = equity - g_dayStartEquity;
    double dd    = g_peakEquity > 0.0 ? 100.0 * (g_peakEquity - equity) / g_peakEquity : 0.0;
    double dayPct = g_dayStartEquity > 0.0 ? 100.0 * dayPL / g_dayStartEquity : 0.0;
-   string text = StringFormat("%s v1.00 | %s | magic %I64d\n", EA_NAME, _Symbol, InpMagic);
+   string text = StringFormat("%s v1.10 | %s | magic %I64d\n", EA_NAME, _Symbol, InpMagic);
    text += StringFormat("Preset %s: X %.1f%%  daily %.1f%%  max DD %.1f%%  RR 1:%.0f\n",
                         PresetName(), g_basketPct, g_dailyPct, g_maxDDPct, RR_RATIO);
    text += StringFormat("Regime: %s (candidate %s %d/%d)  ATR %.2f  spread %.2f\n",
@@ -1654,6 +1697,8 @@ int OnInit()
      }
    g_historyDirty = true;
    g_lastBarTime  = 0;
+   ArrayInitialize(g_regimeBars, 0);
+   ArrayInitialize(g_statBaskets, 0);
 
    PrintFormat("[RGG] %s started on %s | preset %s X=%.1f%% daily=%.1f%% maxDD=%.1f%% | RR 1:%.0f | levels %d | filling %s",
                EA_NAME, _Symbol, PresetName(), g_basketPct, g_dailyPct, g_maxDDPct, RR_RATIO,
@@ -1661,6 +1706,94 @@ int OnInit()
    if(g_hardHalt)
       Print("[RGG] Equity hard-stop is ACTIVE from a previous session. No trading until InpResetHardStop=true.");
    return INIT_SUCCEEDED;
+  }
+
+//--- tester diagnostics: where does the P/L come from and how do trades exit?
+int BasketTypeOfPosition(const ulong posId, const ulong &ids[], const int &types[])
+  {
+   for(int i = ArraySize(ids) - 1; i >= 0; i--)
+      if(ids[i] == posId)
+         return types[i];
+   return BASKET_NONE;
+  }
+
+void PrintExitStats()
+  {
+   if(!HistorySelect(0, TimeCurrent() + 60))
+      return;
+   int   n = HistoryDealsTotal();
+   ulong ids[];
+   int   types[];
+   // pass 1: entry deals -> grid type from the opening order's comment (RGG|R|.. / RGG|B|..)
+   for(int i = 0; i < n; i++)
+     {
+      ulong d = HistoryDealGetTicket(i);
+      if(d == 0 || HistoryDealGetInteger(d, DEAL_MAGIC) != InpMagic || HistoryDealGetString(d, DEAL_SYMBOL) != _Symbol)
+         continue;
+      if((ENUM_DEAL_ENTRY)HistoryDealGetInteger(d, DEAL_ENTRY) != DEAL_ENTRY_IN)
+         continue;
+      ulong  ord = (ulong)HistoryDealGetInteger(d, DEAL_ORDER);
+      string c   = HistoryOrderGetString(ord, ORDER_COMMENT);
+      if(c == "")
+         c = HistoryDealGetString(d, DEAL_COMMENT);
+      int k = ArraySize(ids);
+      ArrayResize(ids, k + 1);
+      ArrayResize(types, k + 1);
+      ids[k]   = (ulong)HistoryDealGetInteger(d, DEAL_POSITION_ID);
+      types[k] = (StringFind(c, EA_TAG + "|R|") == 0) ? BASKET_RANGE : BASKET_BREAKOUT;
+     }
+   // pass 2: exit deals, bucket = type * 4 + reason (0 TP, 1 SL loss, 2 SL >= 0 i.e. break-even, 3 EA close)
+   int    cnt[12];
+   double pl[12];
+   ArrayInitialize(cnt, 0);
+   ArrayInitialize(pl, 0.0);
+   for(int i = 0; i < n; i++)
+     {
+      ulong d = HistoryDealGetTicket(i);
+      if(d == 0 || HistoryDealGetInteger(d, DEAL_MAGIC) != InpMagic || HistoryDealGetString(d, DEAL_SYMBOL) != _Symbol)
+         continue;
+      ENUM_DEAL_ENTRY entry = (ENUM_DEAL_ENTRY)HistoryDealGetInteger(d, DEAL_ENTRY);
+      if(entry != DEAL_ENTRY_OUT && entry != DEAL_ENTRY_OUT_BY)
+         continue;
+      double net = HistoryDealGetDouble(d, DEAL_PROFIT) + HistoryDealGetDouble(d, DEAL_SWAP) +
+                   HistoryDealGetDouble(d, DEAL_COMMISSION) + HistoryDealGetDouble(d, DEAL_FEE);
+      ENUM_DEAL_REASON why = (ENUM_DEAL_REASON)HistoryDealGetInteger(d, DEAL_REASON);
+      int r = (why == DEAL_REASON_TP) ? 0 : (why == DEAL_REASON_SL) ? (net < 0.0 ? 1 : 2) : 3;
+      int t = BasketTypeOfPosition((ulong)HistoryDealGetInteger(d, DEAL_POSITION_ID), ids, types);
+      if(t != BASKET_RANGE && t != BASKET_BREAKOUT)
+         t = BASKET_BREAKOUT;
+      cnt[t * 4 + r]++;
+      pl[t * 4 + r] += net;
+     }
+   Print("[RGG] ================= Exit statistics (excl. entry commission) =================");
+   for(int t = BASKET_RANGE; t <= BASKET_BREAKOUT; t++)
+     {
+      int    total = cnt[t * 4] + cnt[t * 4 + 1] + cnt[t * 4 + 2] + cnt[t * 4 + 3];
+      double net   = pl[t * 4] + pl[t * 4 + 1] + pl[t * 4 + 2] + pl[t * 4 + 3];
+      PrintFormat("[RGG] %-8s baskets %d trades %d net %.2f | TP %d (%.2f) | SL %d (%.2f) | BE %d (%.2f) | EA-close %d (%.2f)",
+                  BasketName(t), g_statBaskets[t], total, net, cnt[t * 4], pl[t * 4], cnt[t * 4 + 1], pl[t * 4 + 1],
+                  cnt[t * 4 + 2], pl[t * 4 + 2], cnt[t * 4 + 3], pl[t * 4 + 3]);
+     }
+   int bars = 0;
+   for(int i = 0; i < 5; i++)
+      bars += g_regimeBars[i];
+   if(bars > 0)
+      PrintFormat("[RGG] Regime share of %d bars: RANGE %.1f%% | BREAKOUT %.1f%% | VOLATILE %.1f%% | NEUTRAL %.1f%%",
+                  bars, 100.0 * g_regimeBars[REGIME_RANGE] / bars,
+                  100.0 * (g_regimeBars[REGIME_BREAKOUT_UP] + g_regimeBars[REGIME_BREAKOUT_DOWN]) / bars,
+                  100.0 * g_regimeBars[REGIME_VOLATILE] / bars, 100.0 * g_regimeBars[REGIME_NEUTRAL] / bars);
+   PrintFormat("[RGG] Skipped levels: lot below minimum %d | margin %d | risk budget %d | throttled baskets %d",
+               g_statSkipLot, g_statSkipMargin, g_statSkipBudget, g_statThrottled);
+   PrintFormat("[RGG] Status at end: %s", g_hardHalt ? "HARD-STOP" : g_dailyHalt ? "daily pause" : "running");
+  }
+
+// Custom optimisation criterion ("Custom max"): net profit / max equity drawdown.
+double OnTester()
+  {
+   PrintExitStats();
+   double dd     = TesterStatistics(STAT_EQUITY_DD);
+   double profit = TesterStatistics(STAT_PROFIT);
+   return dd > 0.0 ? profit / dd : profit;
   }
 
 void OnDeinit(const int reason)

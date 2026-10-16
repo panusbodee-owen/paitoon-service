@@ -24,3 +24,12 @@
 - [x] T7 Guards + dashboard
 - [x] T8 Presets + README
 - [x] T9 Static review
+
+## Iteration 2 — v1.10 (2026-10-16)
+- Trigger: user backtest #1 (−14.4%, EA stopped trading 2024-01-10). Analysis: `.10x/reviews/2026-10-16-backtest-1-analysis.md`
+- [x] ADR-003 risk throttle + explicit halts
+- [x] Tester exit statistics + OnTester criterion
+- [x] Mirror + 4 new tests (27/27 pass)
+- [x] README research mode, changelog
+- [ ] User re-runs backtest in research mode (v1.10)
+- [ ] Entry-edge research (needs exported M15 data)

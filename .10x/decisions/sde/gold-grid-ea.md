@@ -26,3 +26,9 @@
 - Python mirror ignores commission/swap; MQL5 includes them in realized/worst case.
 - `MarginOk` checks one order at a time; simultaneous fills of several pendings could need more margin.
 - Dashboard via `Comment()` (simple, not styled).
+
+## v1.10 (after user backtest #1)
+- Replaced `AccountGateOk` with `BasketRiskBudget` (ADR-003): throttle X to headroom; explicit hard-stop/daily pause below `InpMinRiskFraction` (0.25) of X.
+- `TryStartBasket` computes the budget only when a basket would actually start (no log spam).
+- Tester diagnostics: `PrintExitStats()` from `OnTester()` — per grid type TP / SL / BE / EA-close counts and P/L, regime share, skipped levels; `OnTester` returns profit ÷ max equity DD for "Custom max" optimisation.
+- Version 1.10. README §3.1 research mode + changelog.
